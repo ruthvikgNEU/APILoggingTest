@@ -1,19 +1,30 @@
 const express = require('express')
+const mysql = require('mysql')
 const port = 8080;
 const app = express()
-app.listen(port, () => console.log(`app listening on port ${port}`))
+const dbConfig = {
+  host: process.env.MYSQL_HOST,
+  user: process.env.MYSQL_USERNAME,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DB,
+};
 app.use(express.json())
+app.get('/healthz', (req, res) => {
+  const connection = mysql.createConnection(dbConfig);
+  res.setHeader('Cache-Control', 'no-cache');
+  connection.connect(err => {
+    if (err) {
+      res.status(503).send();
+      return;
+    }
+    console.log('Successfully connected to MySQL');
+    res.status(200).send();
+    connection.end();
+  });
+});
 
-  app.get('/tshirt',(req,res) =>{
-    res.status(200).send({
-        tshirt: "tshirt sending...."
-    })
-  }); 
+app.all('/healthz', (req, res, next) => {
+  res.status(405).set('Allow', 'GET').send(); 
+});
 
-  app.post('/tshirt/:id',(req,res) =>{
-   
-    console.log("~~~~~~~Post hit~~~~~~~~~~~~~~~~")
-    res.status(200).send({output: req.body.tshirt + " size- " +  req.params.id});
-  })
-
-  module.exports = app
+app.listen(port, () => console.log(`app listening on port ${port}`))
